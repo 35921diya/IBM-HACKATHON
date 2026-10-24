@@ -1,3 +1,4 @@
+
 """PhishGuard - Streamlit dashboard (team lead + integration module).
 
 This file only presents and integrates. All detection logic lives in the shared
@@ -26,9 +27,9 @@ used instead and a warning banner is shown. Delete a mock by adding the real fil
 
 The app never opens, fetches or executes anything found in submitted content.
 """
-
 from __future__ import annotations
 
+import streamlit as st
 import html
 import logging
 import re
@@ -271,6 +272,30 @@ button[data-baseweb="tab"] p {color: inherit;}
     margin-top: 2rem; padding-top: 0.8rem; border-top: 1px solid __BORDER__;
     font-size: 0.82rem; color: __MUTED__;
 }
+/* High-visibility security alerts */
+.pg-alert {
+    padding: 1rem 1.2rem;
+    margin: 1rem 0;
+    border: 2px solid var(--pg-color);
+    border-left: 8px solid var(--pg-color);
+    border-radius: 12px;
+    background: #0B1728;
+    color: #F8FAFC;
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.22);
+}
+
+.pg-alert-title {
+    font-size: 1.15rem;
+    font-weight: 800;
+    margin-bottom: 0.35rem;
+    color: var(--pg-color);
+}
+
+.pg-alert-message {
+    color: #F1F5F9;
+    margin: 0;
+    line-height: 1.6;
+}
 @media (max-width: 640px) {
     .stApp .pg-hero h1 {font-size: 1.5rem;}
     .pg-gauge {width: 140px; height: 140px;}
@@ -439,6 +464,28 @@ def defang(url: str) -> str:
 
 def render_summary(score: int, level: str, subject: str, scored: bool = True) -> None:
     color = LEVEL_COLORS[level]
+
+    if level == "Critical":
+        st.error(
+            f"🚨 CRITICAL THREAT DETECTED | Risk score: {score}/100. "
+            "Do not click links or open attachments."
+        )
+    elif level == "High":
+        st.error(
+            f"⚠️ HIGH-RISK CONTENT DETECTED | Risk score: {score}/100. "
+            "Verify the sender before taking action."
+        )
+    elif level == "Medium":
+        st.warning(
+            f"⚠️ MEDIUM RISK | Risk score: {score}/100. "
+            "Review the findings carefully."
+        )
+    else:
+        st.success(
+            f"✓ LOW RISK SCORE | {score}/100. "
+            "This does not guarantee that the content is safe."
+        )
+
     left, right = st.columns([1, 2])
     with left:
         st.markdown(
@@ -628,7 +675,184 @@ def qr_tab() -> None:
     with st.expander("Technical details"):
         st.json(entry)
 
+# ---------------------------------------------------------------------------
+# Animated welcome screen
+# ---------------------------------------------------------------------------
 
+INTRO_CSS = """
+<style>
+@keyframes pgFadeUp {
+    from { opacity: 0; transform: translateY(24px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pgShieldGlow {
+    0%, 100% {
+        box-shadow: 0 0 18px rgba(56, 189, 248, 0.16);
+        transform: translateY(0);
+    }
+    50% {
+        box-shadow: 0 0 42px rgba(56, 189, 248, 0.42);
+        transform: translateY(-5px);
+    }
+}
+
+@keyframes pgSweep {
+    from { background-position: -200% 0; }
+    to   { background-position: 200% 0; }
+}
+
+.pg-intro {
+    position: relative;
+    overflow: hidden;
+    text-align: center;
+    padding: 3.5rem 2rem 3rem;
+    margin: 1rem 0 1.5rem;
+    border-radius: 24px;
+    border: 1px solid #1E4268;
+    background:
+        radial-gradient(ellipse at 50% 0%, #15385C 0%, transparent 65%),
+        linear-gradient(145deg, #0B1B31, #102542);
+    animation: pgFadeUp 0.8s ease both;
+}
+
+.pg-intro:before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background: linear-gradient(
+        90deg, transparent, #38BDF8, #3B82F6, transparent
+    );
+    background-size: 200% 100%;
+    animation: pgSweep 3s linear infinite;
+}
+
+.pg-shield {
+    width: 104px;
+    height: 104px;
+    margin: 0 auto 1.6rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 28px;
+    border: 1px solid #28618B;
+    background: linear-gradient(145deg, #153B60, #0A1B33);
+    animation: pgShieldGlow 3s ease-in-out infinite;
+}
+
+.pg-shield span {
+    font-size: 3.5rem;
+    line-height: 1;
+}
+
+.pg-eyebrow {
+    color: #38BDF8 !important;
+    text-transform: uppercase;
+    letter-spacing: 4px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    margin-bottom: 0.8rem;
+}
+
+.pg-intro h1 {
+    color: #F8FAFC !important;
+    font-size: clamp(2.4rem, 6vw, 4.2rem);
+    font-weight: 800;
+    letter-spacing: -2px;
+    margin: 0 0 1rem;
+}
+
+.pg-intro h1 span {
+    color: #38BDF8;
+}
+
+.pg-intro-copy {
+    color: #B7C9DC !important;
+    max-width: 680px;
+    margin: 0 auto;
+    font-size: 1.08rem;
+    line-height: 1.85;
+}
+
+.pg-feature-row {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin: 2rem auto 0;
+}
+
+.pg-feature {
+    padding: 11px 17px;
+    border: 1px solid #284766;
+    border-radius: 12px;
+    background: rgba(8, 25, 46, 0.72);
+    color: #E2EDF8;
+    font-size: 0.9rem;
+}
+
+.pg-intro-note {
+    color: #94A3B8 !important;
+    font-size: 0.82rem;
+    text-align: center;
+    margin-top: 1rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .pg-intro, .pg-shield, .pg-intro:before {
+        animation: none !important;
+    }
+}
+</style>
+"""
+
+
+def show_welcome_screen() -> None:
+    st.markdown(INTRO_CSS, unsafe_allow_html=True)
+
+    st.markdown(
+        """
+        <div class="pg-intro">
+            <div class="pg-shield"><span>🛡️</span></div>
+            <div class="pg-eyebrow">Cybersecurity · Defensive Intelligence</div>
+            <h1>Phish<span>Guard</span></h1>
+            <p class="pg-intro-copy">
+                Every click has a story. Make sure it's a safe one.
+                <br>
+                Inspect suspicious emails, examine QR-code destinations,
+                and understand the warning signs before you trust a link.
+            </p>
+            <div class="pg-feature-row">
+                <div class="pg-feature">✉️ Email Inspection</div>
+                <div class="pg-feature">▦ QR Code Analysis</div>
+                <div class="pg-feature">🔎 Explainable Risk Scores</div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    _, center, _ = st.columns([1, 2, 1])
+    with center:
+        if st.button(
+            "🛡️  Start Protecting Yourself",
+            type="primary",
+            use_container_width=True,
+            key="pg_start_button",
+        ):
+            st.session_state["pg_welcome_complete"] = True
+            st.rerun()
+
+    st.markdown(
+        '<p class="pg-intro-note">'
+        'Your submitted content is inspected without opening its links. '
+        'Risk scores are heuristic assessments, not guarantees of safety.'
+        '</p>',
+        unsafe_allow_html=True,
+    )
 # ---------------------------------------------------------------------------
 # Page layout
 # ---------------------------------------------------------------------------
@@ -649,30 +873,51 @@ def sidebar() -> None:
 
 def main() -> None:
     st.markdown(APP_CSS, unsafe_allow_html=True)
+
+    # Show the animated introduction until the user enters the dashboard.
+    if not st.session_state.get("pg_welcome_complete", False):
+        show_welcome_screen()
+        return
+
     sidebar()
 
     st.markdown(
-        """<div class="pg-hero"><h1>PhishGuard 🔒</h1>
-        <p>Spear-phishing and QR-code (quishing) inspector with an explainable 0-100 risk score.</p></div>""",
+        """
+        <div class="pg-hero">
+            <h1>PhishGuard 🔒</h1>
+            <p>
+                Spear-phishing and QR-code (quishing) inspector
+                with an explainable 0-100 risk score.
+            </p>
+        </div>
+        """,
         unsafe_allow_html=True,
     )
 
     if MOCKS_ACTIVE:
-        st.warning("Temporary mocks are active for: " + ", ".join(MOCKS_ACTIVE) +
-                   ". Results are placeholders until the real modules are added.")
+        st.warning(
+            "Temporary mocks are active for: "
+            + ", ".join(MOCKS_ACTIVE)
+            + ". Results are placeholders until the real modules are added."
+        )
 
-    tab_email, tab_qr = st.tabs(["Email Scanner", "QR Scanner"])
+    tab_email, tab_qr = st.tabs(["✉️ Email Scanner", "▦ QR Scanner"])
+
     with tab_email:
         email_tab()
+
     with tab_qr:
         qr_tab()
 
     st.markdown(
-        """<div class="pg-footer">PhishGuard is a prototype built for a hackathon. It cannot guarantee
-        detection of every attack, and a low score is not a guarantee of safety. When in doubt,
-        do not click, and ask your security team.</div>""",
+        """
+        <div class="pg-footer">
+            PhishGuard is a prototype built for a hackathon. It cannot guarantee
+            detection of every attack, and a low score is not a guarantee of safety.
+            When in doubt, do not click, and ask your security team.
+        </div>
+        """,
         unsafe_allow_html=True,
     )
-
-
-main()
+if __name__ == "__main__":
+    main()
